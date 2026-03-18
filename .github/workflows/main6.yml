@@ -1,0 +1,45 @@
+# ==========================================
+# OpenAI Auto Register - Loop Mode
+# ==========================================
+
+name: OpenAI Register (Loop)-5min
+
+on:
+  workflow_dispatch:
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install curl_cffi requests
+
+      - name: Run scripts in background
+        run: |
+          # 同时运行两个脚本（后台）
+          python yoyo_auto_openai_register_V3.5-curl-de5.py
+          
+          # 等待5分钟后自动停止
+          sleep 5m
+          
+          # 停止后台脚本
+          pkill -f "yoyo_auto_openai_register" || true
+
+      - name: Upload tokens as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openai-tokens-loop
+          path: token/
+          retention-days: 30
+          if-no-files-found: ignore
