@@ -2,7 +2,7 @@
 # OpenAI Auto Register - Loop Mode
 # ==========================================
 
-name: OpenAI Register (Loop)
+name: OpenAI Register (Loop)-15min
 
 on:
   workflow_dispatch:
