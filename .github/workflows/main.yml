@@ -1,0 +1,177 @@
+# ==========================================
+# OpenAI Auto Register GitHub Actions Workflow
+# ==========================================
+# 
+# This workflow automatically runs the OpenAI registration scripts
+# and saves generated tokens.
+#
+# Setup Required:
+# 1. Go to Repository Settings → Secrets and variables → Actions
+# 2. Add the following secrets:
+#    - PROXY: Your proxy URL (e.g., http://127.0.0.1:7890)
+#    - WORKER_API_KEY: Your Cloudflare Worker API key
+#
+# Usage:
+# - Manual: Go to Actions → "OpenAI Auto Register" → "Run workflow"
+# - Scheduled: Runs daily at 00:00 UTC
+#
+# Token Storage:
+# - By default: Saved as GitHub Artifacts (RECOMMENDED - safer)
+# - To commit to repo: Uncomment the "Commit tokens" step below
+#   WARNING: Tokens in git history is a security risk!
+#
+# ==========================================
+
+name: OpenAI Auto Register
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'Script to run'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - curl
+          - dpdns
+      proxy:
+        description: 'Proxy URL (optional, uses secret if empty)'
+        required: false
+        default: ''
+      run_once:
+        description: 'Run only once (not loop)'
+        type: boolean
+        default: true
+
+  # Scheduled trigger - run daily at 00:00 UTC
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ==========================================
+      # 1. Checkout code
+      # ==========================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for git operations
+      
+      # ==========================================
+      # 2. Setup Python
+      # ==========================================
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      # ==========================================
+      # 3. Install dependencies
+      # ==========================================
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install curl_cffi requests
+    
+      # ==========================================
+      # 4. Configure Git (for token commit - optional)
+      # ==========================================
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        if: false  # Disable by default - enable if committing tokens
+      
+      # ==========================================
+      # 5. Run OpenAI Registration Script (curl)
+      # ==========================================
+      - name: Run curl script
+        env:
+          PROXY: ${{ secrets.PROXY }}
+          WORKER_API_KEY: ${{ secrets.WORKER_API_KEY }}
+        if: inputs.script == 'curl' || inputs.script == 'both' || github.event_name == 'schedule'
+        run: |
+          # Use proxy from input or secret
+          PROXY_ARG=""
+          if [ -n "${{ inputs.proxy }}" ]; then
+            PROXY_ARG="--proxy ${{ inputs.proxy }}"
+          elif [ -n "$PROXY" ]; then
+            PROXY_ARG="--proxy $PROXY"
+          fi
+          
+          # Run once or loop
+          if [ "${{ inputs.run_once }}" == "true" ] || [ "${{ inputs.run_once }}" == "" ]; then
+            python yoyo_auto_openai_register_V3.5-curl.py --once $PROXY_ARG
+          else
+            python yoyo_auto_openai_register_V3.5-curl.py $PROXY_ARG
+          fi
+      
+      # ==========================================
+      # 6. Run OpenAI Registration Script (dpdns)
+      # ==========================================
+      - name: Run dpdns script
+        env:
+          PROXY: ${{ secrets.PROXY }}
+          WORKER_API_KEY: ${{ secrets.WORKER_API_KEY }}
+        if: inputs.script == 'dpdns' || inputs.script == 'both' || github.event_name == 'schedule'
+        run: |
+          # Use proxy from input or secret
+          PROXY_ARG=""
+          if [ -n "${{ inputs.proxy }}" ]; then
+            PROXY_ARG="--proxy ${{ inputs.proxy }}"
+          elif [ -n "$PROXY" ]; then
+            PROXY_ARG="--proxy $PROXY"
+          fi
+          
+          # Run once or loop
+          if [ "${{ inputs.run_once }}" == "true" ] || [ "${{ inputs.run_once }}" == "" ]; then
+            python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once $PROXY_ARG
+          else
+            python yoyo_auto_openai_register_V3.5-curl-dpdns.py $PROXY_ARG
+          fi
+      
+      # ==========================================
+      # 7. Upload tokens as Artifact (RECOMMENDED)
+      # ==========================================
+      - name: Upload tokens as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openai-tokens
+          path: token/
+          retention-days: 30
+          if-no-files-found: ignore
+      
+      # ==========================================
+      # 8. Commit tokens to repository (OPTIONAL)
+      # WARNING: Tokens in git history is a security risk!
+      # ==========================================
+      # - name: Commit tokens
+      #   if: always()
+      #   run: |
+      #     if [ -d "token" ] && [ "$(ls -A token/)" ]; then
+      #       git add token/
+      #       git commit -m "Add new OpenAI tokens $(date '+%Y-%m-%d %H:%M')" || true
+      #       git push
+      #     fi
+      # ==========================================
+      
+      # ==========================================
+      # 9. Upload workflow logs
+      # ==========================================
+      - name: Upload workflow logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-logs
+          path: |
+            ${{ runner.temp }}/_runner.log
+            ${{ github.workspace }}/*.log
+          retention-days: 7
+          if-no-files-found: ignore
