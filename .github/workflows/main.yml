@@ -83,36 +83,37 @@ jobs:
       - name: Set run mode
         id: run_mode
         run: |
+          # Default values
+          SCRIPT="both"
+          RUN_ONCE="true"
+          PROXY_ARG=""
+          
           # Determine which scripts to run
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             SCRIPT="${{ github.event.inputs.script }}"
-          else
-            SCRIPT="both"
-          fi
-          echo "script=$SCRIPT" >> $GITHUB_OUTPUT
-
-          # Determine run_once
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            if [ "${{ github.event.inputs.run_once }}" == "true" ]; then
-              echo "run_once=true" >> $GITHUB_OUTPUT
+            
+            # Determine run_once - checkbox returns "true" when checked
+            INPUT_RUN_ONCE="${{ github.event.inputs.run_once }}"
+            if [ "$INPUT_RUN_ONCE" == "true" ]; then
+              RUN_ONCE="true"
             else
-              echo "run_once=false" >> $GITHUB_OUTPUT
+              RUN_ONCE="false"
             fi
-          else
-            echo "run_once=true" >> $GITHUB_OUTPUT
+            
+            # Determine proxy
+            INPUT_PROXY="${{ github.event.inputs.proxy }}"
+            SECRET_PROXY="${{ secrets.PROXY }}"
+            
+            if [ -n "$INPUT_PROXY" ] && [ "$INPUT_PROXY" != "null" ]; then
+              PROXY_ARG="--proxy $INPUT_PROXY"
+            elif [ -n "$SECRET_PROXY" ]; then
+              PROXY_ARG="--proxy $SECRET_PROXY"
+            fi
           fi
-
-          # Determine proxy
-          INPUT_PROXY="${{ github.event.inputs.proxy }}"
-          SECRET_PROXY="${{ secrets.PROXY }}"
           
-          if [ -n "$INPUT_PROXY" ] && [ "$INPUT_PROXY" != "null" ]; then
-            echo "proxy=--proxy $INPUT_PROXY" >> $GITHUB_OUTPUT
-          elif [ -n "$SECRET_PROXY" ]; then
-            echo "proxy=--proxy $SECRET_PROXY" >> $GITHUB_OUTPUT
-          else
-            echo "proxy=" >> $GITHUB_OUTPUT
-          fi
+          echo "script=$SCRIPT" >> $GITHUB_OUTPUT
+          echo "run_once=$RUN_ONCE" >> $GITHUB_OUTPUT
+          echo "proxy=$PROXY_ARG" >> $GITHUB_OUTPUT
 
       # ==========================================
       # 5. Run OpenAI Registration Script (curl)
@@ -120,10 +121,13 @@ jobs:
       - name: Run curl script
         if: steps.run_mode.outputs.script == 'curl' || steps.run_mode.outputs.script == 'both'
         run: |
-          if [[ "${{ steps.run_mode.outputs.run_once }}" == "true" || "${{ steps.run_mode.outputs.run_once }}" == "" ]]; then
-            python yoyo_auto_openai_register_V3.5-curl.py --once ${{ steps.run_mode.outputs.proxy }}
+          RUN_ONCE="${{ steps.run_mode.outputs.run_once }}"
+          PROXY_ARG="${{ steps.run_mode.outputs.proxy }}"
+          
+          if [[ "$RUN_ONCE" == "true" ]]; then
+            python yoyo_auto_openai_register_V3.5-curl.py --once $PROXY_ARG
           else
-            python yoyo_auto_openai_register_V3.5-curl.py ${{ steps.run_mode.outputs.proxy }}
+            python yoyo_auto_openai_register_V3.5-curl.py $PROXY_ARG
           fi
 
       # ==========================================
@@ -132,10 +136,13 @@ jobs:
       - name: Run dpdns script
         if: steps.run_mode.outputs.script == 'dpdns' || steps.run_mode.outputs.script == 'both'
         run: |
-          if [[ "${{ steps.run_mode.outputs.run_once }}" == "true" || "${{ steps.run_mode.outputs.run_once }}" == "" ]]; then
-            python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once ${{ steps.run_mode.outputs.proxy }}
+          RUN_ONCE="${{ steps.run_mode.outputs.run_once }}"
+          PROXY_ARG="${{ steps.run_mode.outputs.proxy }}"
+          
+          if [[ "$RUN_ONCE" == "true" ]]; then
+            python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once $PROXY_ARG
           else
-            python yoyo_auto_openai_register_V3.5-curl-dpdns.py ${{ steps.run_mode.outputs.proxy }}
+            python yoyo_auto_openai_register_V3.5-curl-dpdns.py $PROXY_ARG
           fi
 
       # ==========================================
