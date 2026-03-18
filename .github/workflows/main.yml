@@ -1,15 +1,6 @@
 # ==========================================
 # OpenAI Auto Register GitHub Actions Workflow
 # ==========================================
-#
-# Setup: Repository Settings → Secrets → Actions
-# - PROXY: Your proxy URL
-#
-# Usage:
-# - Manual: Actions → Run workflow
-# - Schedule: Daily at UTC 00:00
-#
-# ==========================================
 
 name: OpenAI Auto Register
 
@@ -25,14 +16,14 @@ on:
           - both
           - curl
           - dpdns
-      run_once:
-        description: 'Run only once'
+      mode:
+        description: 'Run mode'
         required: true
-        default: 'true'
+        default: 'once'
         type: choice
         options:
-          - 'true'
-          - 'false'
+          - once
+          - loop
   schedule:
     - cron: '0 0 * * *'
 
@@ -57,14 +48,18 @@ jobs:
       # ========================
       - name: Run curl script
         if: github.event.inputs.script == 'curl' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
-        run: python yoyo_auto_openai_register_V3.5-curl.py --once ${{ secrets.PROXY != '' && format('--proxy {0}', secrets.PROXY) || '' }}
+        run: >
+          python yoyo_auto_openai_register_V3.5-curl.py
+          ${{ github.event.inputs.mode == 'once' && '--once' || '' }}
 
       # ========================
       # Run dpdns script
       # ========================
       - name: Run dpdns script
         if: github.event.inputs.script == 'dpdns' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
-        run: python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once ${{ secrets.PROXY != '' && format('--proxy {0}', secrets.PROXY) || '' }}
+        run: >
+          python yoyo_auto_openai_register_V3.5-curl-dpdns.py
+          ${{ github.event.inputs.mode == 'once' && '--once' || '' }}
 
       # ========================
       # Upload tokens as artifact
