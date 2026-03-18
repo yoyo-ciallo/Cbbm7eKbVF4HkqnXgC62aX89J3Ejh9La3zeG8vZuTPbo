@@ -103,10 +103,13 @@ jobs:
           fi
 
           # Determine proxy
-          if [ "${{ github.event.inputs.proxy }}" != "" ] && [ "${{ github.event.inputs.proxy }}" != null ]; then
-            echo "proxy=--proxy ${{ github.event.inputs.proxy }}" >> $GITHUB_OUTPUT
-          elif [ "${{ secrets.PROXY }}" != "" ]; then
-            echo "proxy=--proxy ${{ secrets.PROXY }}" >> $GITHUB_OUTPUT
+          INPUT_PROXY="${{ github.event.inputs.proxy }}"
+          SECRET_PROXY="${{ secrets.PROXY }}"
+          
+          if [ -n "$INPUT_PROXY" ] && [ "$INPUT_PROXY" != "null" ]; then
+            echo "proxy=--proxy $INPUT_PROXY" >> $GITHUB_OUTPUT
+          elif [ -n "$SECRET_PROXY" ]; then
+            echo "proxy=--proxy $SECRET_PROXY" >> $GITHUB_OUTPUT
           else
             echo "proxy=" >> $GITHUB_OUTPUT
           fi
@@ -116,13 +119,11 @@ jobs:
       # ==========================================
       - name: Run curl script
         if: steps.run_mode.outputs.script == 'curl' || steps.run_mode.outputs.script == 'both'
-        env:
-          PROXY_ARG: ${{ steps.run_mode.outputs.proxy }}
         run: |
-          if [ "${{ steps.run_mode.outputs.run_once }}" == "true" ]; then
-            python yoyo_auto_openai_register_V3.5-curl.py --once $PROXY_ARG
+          if [[ "${{ steps.run_mode.outputs.run_once }}" == "true" || "${{ steps.run_mode.outputs.run_once }}" == "" ]]; then
+            python yoyo_auto_openai_register_V3.5-curl.py --once ${{ steps.run_mode.outputs.proxy }}
           else
-            python yoyo_auto_openai_register_V3.5-curl.py $PROXY_ARG
+            python yoyo_auto_openai_register_V3.5-curl.py ${{ steps.run_mode.outputs.proxy }}
           fi
 
       # ==========================================
@@ -130,13 +131,11 @@ jobs:
       # ==========================================
       - name: Run dpdns script
         if: steps.run_mode.outputs.script == 'dpdns' || steps.run_mode.outputs.script == 'both'
-        env:
-          PROXY_ARG: ${{ steps.run_mode.outputs.proxy }}
         run: |
-          if [ "${{ steps.run_mode.outputs.run_once }}" == "true" ]; then
-            python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once $PROXY_ARG
+          if [[ "${{ steps.run_mode.outputs.run_once }}" == "true" || "${{ steps.run_mode.outputs.run_once }}" == "" ]]; then
+            python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once ${{ steps.run_mode.outputs.proxy }}
           else
-            python yoyo_auto_openai_register_V3.5-curl-dpdns.py $PROXY_ARG
+            python yoyo_auto_openai_register_V3.5-curl-dpdns.py ${{ steps.run_mode.outputs.proxy }}
           fi
 
       # ==========================================
