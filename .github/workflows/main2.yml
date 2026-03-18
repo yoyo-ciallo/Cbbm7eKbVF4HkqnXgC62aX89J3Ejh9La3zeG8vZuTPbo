@@ -1,22 +1,11 @@
 # ==========================================
 # OpenAI Auto Register - Loop Mode
 # ==========================================
-# Runs in continuous loop
 
 name: OpenAI Register (Loop)
 
 on:
   workflow_dispatch:
-    inputs:
-      script:
-        description: 'Script to run'
-        required: true
-        default: 'both'
-        type: choice
-        options:
-          - both
-          - curl
-          - dpdns
 
 jobs:
   register:
@@ -32,14 +21,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install curl_cffi requests playwright
+        run: pip install curl_cffi requests
 
-      - name: Run curl script (loop)
-        if: github.event.inputs.script == 'curl' || github.event.inputs.script == 'both'
+      - name: Run curl script
         run: python yoyo_auto_openai_register_V3.5-curl.py
 
-      - name: Run dpdns script (loop)
-        if: github.event.inputs.script == 'dpdns' || github.event.inputs.script == 'both'
+      - name: Run dpdns script
         run: python yoyo_auto_openai_register_V3.5-curl-dpdns.py
 
       - name: Upload tokens as artifact
