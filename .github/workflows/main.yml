@@ -1,7 +1,7 @@
 # ==========================================
 # OpenAI Auto Register - Once Mode
 # ==========================================
-# Runs once and exits
+# 同時克隆兩個 repo 到隔離子目錄，完成後自動清理
 
 name: OpenAI Register (Once)
 
@@ -15,7 +15,7 @@ on:
         type: choice
         options:
           - both
-          - curl
+          - qzz
           - dpdns
   schedule:
     - cron: '0 0 * * *'
@@ -25,30 +25,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      # 1. Clone 當前 repo（有腳本）到隔離子目錄
+      - name: Checkout scripts repository
         uses: actions/checkout@v4
+        with:
+          path: ./.runner-temp/scripts
+          fetch-depth: 1
 
+      # 2. Clone 私人項目（使用 PAT 認證）
+      - name: Checkout private skript repository
+        uses: actions/checkout@v4
+        with:
+          path: ./.runner-temp/skript
+          repository: s12ryt/skript
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 1
+
+      # 3. 在隔離目錄中設定 Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # 4. 在隔離目錄中安裝依賴
       - name: Install dependencies
-        run: pip install curl_cffi requests
+        run: |
+          cd .runner-temp/scripts
+          pip install curl_cffi requests
 
+      # 5. 在隔離目錄中運行腳本
       - name: Run curl script
-        if: github.event.inputs.script == 'curl' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
-        run: python yoyo_auto_openai_register_V3.5-curl.py --once
-
+        if: github.event.inputs.script == 'qzz' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
+        run: |
+          cd .runner-temp/scripts
+          python yoyo_auto_openai_register_V3.5-curl-qzz.py --once &
+          python yoyo_auto_openai_register_V3.5-curl-de5.py --once
       - name: Run dpdns script
         if: github.event.inputs.script == 'dpdns' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
-        run: python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once
+        run: |
+          cd .runner-temp/scripts
+          python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once &
+          python yoyo_auto_openai_register_V3.5-curl-indevs.py --once
 
+      # 6. 上傳 token artifact（從隔離目錄取值）
       - name: Upload tokens as artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: openai-tokens-once
-          path: token/
+          path: .runner-temp/scripts/token/
           retention-days: 30
           if-no-files-found: ignore
+
+      # 7. 刪除克隆的內容（保持 runner 乾淨）
+      - name: Cleanup cloned repositories
+        run: rm -rf .runner-temp
