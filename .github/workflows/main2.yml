@@ -40,7 +40,7 @@ jobs:
         run: |
           cd .runner-temp
           # 同时运行两个脚本（后台）
-          python yoyo_auto_openai_register_V3.5-curl.py &
+          python yoyo_auto_openai_register_V3.5-curl-qzz.py &
           python yoyo_auto_openai_register_V3.5-curl-dpdns.py &
           python yoyo_auto_openai_register_V3.5-curl-indevs.py &
           python yoyo_auto_openai_register_V3.5-curl-de5.py &
