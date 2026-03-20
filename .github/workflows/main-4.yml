@@ -1,6 +1,7 @@
 # ==========================================
 # OpenAI Auto Register - Loop Mode
 # ==========================================
+# 克隆到隔離子目錄運行，完成後自動清理
 
 name: OpenAI Register (Loop)-15min
 
@@ -13,36 +14,53 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Checkout repository
+      # 1. Clone 私人項目到隔離子目錄（使用 PAT 認證）
+      - name: Checkout private repository
         uses: actions/checkout@v4
+        with:
+          path: ./.runner-temp
+          repository: s12ryt/skript
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 1
 
+      # 2. 在隔離目錄中設定 Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # 3. 在隔離目錄中安裝依賴
       - name: Install dependencies
-        run: pip install curl_cffi requests
+        run: |
+          cd .runner-temp
+          pip install curl_cffi requests
 
+      # 4. 在隔離目錄中運行腳本
       - name: Run scripts in background
         run: |
+          cd .runner-temp
           # 同时运行两个脚本（后台）
-          python yoyo_auto_openai_register_V3.5-curl.py &
+          python yoyo_auto_openai_register_V3.5-curl-qzz.py &
           python yoyo_auto_openai_register_V3.5-curl-dpdns.py &
           python yoyo_auto_openai_register_V3.5-curl-indevs.py &
           python yoyo_auto_openai_register_V3.5-curl-de5.py &
-          
+
           # 等待15分钟后自动停止
           sleep 15m
-          
+
           # 停止后台脚本
           pkill -f "yoyo_auto_openai_register" || true
 
+      # 5. 上傳 token artifact（從隔離目錄取值）
       - name: Upload tokens as artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: openai-tokens-loop
-          path: token/
+          name: openai-tokens-15min
+          path: .runner-temp/token/
           retention-days: 30
           if-no-files-found: ignore
+
+      # 6. 刪除克隆的內容（保持 runner 乾淨）
+      - name: Cleanup cloned repository
+        run: rm -rf .runner-temp
