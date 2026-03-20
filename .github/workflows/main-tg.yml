@@ -1,0 +1,126 @@
+# ==========================================
+# GitHub Actions Telegram Notification
+# ==========================================
+# 在指定 workflow 完成後，透過 Telegram bot 發送通知
+
+name: Telegram Actions Notify
+
+on:
+  workflow_run:
+    workflows:
+      - OpenAI Register (Loop)
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+      WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      WORKFLOW_EVENT: ${{ github.event.workflow_run.event }}
+      WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
+      WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+      WORKFLOW_ACTOR: ${{ github.event.workflow_run.actor.login }}
+      WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+      WORKFLOW_RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+      WORKFLOW_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      REPOSITORY_NAME: ${{ github.repository }}
+      SERVER_URL: ${{ github.server_url }}
+
+    steps:
+      # 1. 檢查 Telegram secrets 是否已設定
+      - name: Check Telegram secrets
+        id: secret-check
+        shell: bash
+        run: |
+          if [[ -z "${TELEGRAM_BOT_TOKEN}" || -z "${TELEGRAM_CHAT_ID}" ]]; then
+            echo "::warning::未設定 TELEGRAM_BOT_TOKEN 或 TELEGRAM_CHAT_ID，略過 Telegram 通知。"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      # 2. 整理通知內容
+      - name: Build Telegram message
+        id: message
+        if: steps.secret-check.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          python3 <<'PY'
+          import html
+          import os
+
+          conclusion = os.environ.get("WORKFLOW_CONCLUSION", "unknown")
+          status_map = {
+              "success": ("✅", "成功"),
+              "failure": ("❌", "失敗"),
+              "cancelled": ("⚠️", "已取消"),
+              "timed_out": ("⏰", "逾時"),
+              "action_required": ("🛠️", "需要手動處理"),
+              "neutral": ("ℹ️", "中性結果"),
+              "skipped": ("⏭️", "已略過"),
+              "stale": ("💤", "狀態過期"),
+          }
+
+          icon, status_text = status_map.get(conclusion, ("ℹ️", conclusion or "unknown"))
+          run_url = f"{os.environ.get('SERVER_URL', 'https://github.com')}/{os.environ.get('REPOSITORY_NAME', '')}/actions/runs/{os.environ.get('WORKFLOW_RUN_ID', '')}"
+          short_sha = (os.environ.get("WORKFLOW_SHA", "") or "")[:7]
+
+          lines = [
+              f"{icon} <b>GitHub Actions 執行完成</b>",
+              f"<b>Workflow：</b>{html.escape(os.environ.get('WORKFLOW_NAME', ''))}",
+              f"<b>狀態：</b>{html.escape(status_text)}",
+              f"<b>Repo：</b>{html.escape(os.environ.get('REPOSITORY_NAME', ''))}",
+              f"<b>分支：</b>{html.escape(os.environ.get('WORKFLOW_BRANCH', 'unknown'))}",
+              f"<b>事件：</b>{html.escape(os.environ.get('WORKFLOW_EVENT', 'unknown'))}",
+              f"<b>觸發者：</b>{html.escape(os.environ.get('WORKFLOW_ACTOR', 'unknown'))}",
+              f"<b>Run：</b>#{html.escape(os.environ.get('WORKFLOW_RUN_NUMBER', '0'))} (attempt {html.escape(os.environ.get('WORKFLOW_RUN_ATTEMPT', '1'))})",
+          ]
+
+          if short_sha:
+              lines.append(f"<b>Commit：</b><code>{html.escape(short_sha)}</code>")
+
+          lines.append(f"<a href=\"{html.escape(run_url)}\">查看 Actions 執行紀錄</a>")
+          message = "\n".join(lines)
+
+          output_path = os.environ["GITHUB_OUTPUT"]
+          with open(output_path, "a", encoding="utf-8") as fh:
+              fh.write("text<<EOF\n")
+              fh.write(message)
+              fh.write("\nEOF\n")
+          PY
+
+      # 3. 發送 Telegram 通知
+      - name: Send Telegram notification
+        if: steps.secret-check.outputs.enabled == 'true'
+        shell: bash
+        env:
+          TELEGRAM_MESSAGE: ${{ steps.message.outputs.text }}
+        run: |
+          for attempt in 1 2 3; do
+            if curl --fail --silent --show-error \
+              --request POST \
+              --url "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=${TELEGRAM_MESSAGE}" \
+              --data-urlencode "parse_mode=HTML" \
+              --data-urlencode "disable_web_page_preview=true"; then
+              exit 0
+            fi
+
+            if [[ "${attempt}" -lt 3 ]]; then
+              echo "::warning::Telegram 通知發送失敗，2 秒後進行下一次重試。"
+              sleep 2
+            fi
+          done
+
+          echo "::error::Telegram 通知在 3 次嘗試後仍然失敗。"
+          exit 1
