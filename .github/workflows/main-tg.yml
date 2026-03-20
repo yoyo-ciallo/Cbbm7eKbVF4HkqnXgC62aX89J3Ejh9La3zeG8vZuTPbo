@@ -9,6 +9,9 @@ on:
   workflow_run:
     workflows:
       - OpenAI Register (Loop)
+      - OpenAI Register (Loop)-5min
+      - OpenAI Register (Loop)-15min
+      - OpenAI Register (Loop)-30min
     types:
       - completed
 
