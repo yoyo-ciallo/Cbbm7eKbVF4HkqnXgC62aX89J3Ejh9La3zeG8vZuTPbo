@@ -40,29 +40,27 @@ jobs:
         run: |
           cd .runner-temp
           # 同时运行两个脚本（后台）
-          python yoyo_auto_openai_register_V3.5-curl-qzz.py &
-          python yoyo_auto_openai_register_V3.5-curl-dpdns.py &
-          python yoyo_auto_openai_register_V3.5-curl-indevs.py &
-          python yoyo_auto_openai_register_V3.5-curl-de5.py &
-          python yoyo_auto_openai_register_V3.5-curl-qzz.py &
-          python yoyo_auto_openai_register_V3.5-curl-dpdns.py &
-          python yoyo_auto_openai_register_V3.5-curl-indevs.py &
-          python yoyo_auto_openai_register_V3.5-curl-de5.py &
-          python yoyo_auto_openai_register_V3.5-curl-qzz.py &
-          python yoyo_auto_openai_register_V3.5-curl-dpdns.py &
-          python yoyo_auto_openai_register_V3.5-curl-indevs.py &
-          python yoyo_auto_openai_register_V3.5-curl-de5.py &
-          python yoyo_auto_openai_register_V3.5-curl-qzz.py &
-          python yoyo_auto_openai_register_V3.5-curl-dpdns.py &
-          python yoyo_auto_openai_register_V3.5-curl-indevs.py &
-          python yoyo_auto_openai_register_V3.5-curl-de5.py &
+          python yoyo_auto_openai_register_V3.6-curl-qzz.py &
+          python yoyo_auto_openai_register_V3.6-curl-dpdns.py &
+          python yoyo_auto_openai_register_V3.6-curl-indevs.py &
+          python yoyo_auto_openai_register_V3.6-curl-de5.py &
 
-          # 等待15分钟后自动停止
+          # 等待5分钟后自动停止
           sleep 15m
 
           # 停止后台脚本
           pkill -f "yoyo_auto_openai_register" || true
-
+          
+      - name: Run login scripts in background
+        run: |
+          cd .runner-temp
+          python yoyo_auto_openai_login-qzz.py &
+          python yoyo_auto_openai_login-de5.py &
+          python yoyo_auto_openai_login-dpdns.py &
+          python yoyo_auto_openai_login-indevs.py 
+          
+          sleep 16m
+      
       # 5. 上傳 token artifact（從隔離目錄取值）
       - name: Upload tokens as artifact
         if: always()
