@@ -3,7 +3,7 @@
 # ==========================================
 # 克隆到隔離子目錄運行，完成後自動清理
 
-name: OpenAI Register (Loop)-(catch=5min,login=6)
+name: OpenAI Register (Loop)-5min
 
 on:
   workflow_dispatch:
