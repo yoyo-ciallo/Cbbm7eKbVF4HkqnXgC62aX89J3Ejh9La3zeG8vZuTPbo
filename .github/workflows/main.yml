@@ -34,7 +34,7 @@ jobs:
       - name: Checkout private skript repository
         uses: actions/checkout@v4
         with:
-          path: ./.runner-temp/skript
+          path: ./.runner-temp
           repository: s12ryt/skript
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 1
@@ -48,21 +48,21 @@ jobs:
       # 4. 在隔離目錄中安裝依賴
       - name: Install dependencies
         run: |
-          cd .runner-temp/scripts
+          cd .runner-temp
           pip install curl_cffi requests
 
       # 5. 在隔離目錄中運行腳本
       - name: Run curl script
         if: github.event.inputs.script == 'qzz' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
         run: |
-          cd .runner-temp/scripts
+          cd .runner-temp
            python yoyo_auto_openai_register_v3.7-qzz.py --once &
            python yoyo_auto_openai_register_v3.7-dpdns.py --once &
           
       - name: Run dpdns script
         if: github.event.inputs.script == 'dpdns' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
         run: |
-          cd .runner-temp/scripts
+          cd .runner-temp
           python yoyo_auto_openai_register_v3.7-indevs.py --once &
           python yoyo_auto_openai_register_v3.7-de5.py --once &
 
