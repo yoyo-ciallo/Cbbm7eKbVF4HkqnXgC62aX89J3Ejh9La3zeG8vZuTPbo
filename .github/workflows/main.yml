@@ -17,8 +17,6 @@ on:
           - both
           - qzz
           - dpdns
-  schedule:
-    - cron: '0 0 * * *'
 
 jobs:
   register:
@@ -58,14 +56,15 @@ jobs:
         if: github.event.inputs.script == 'qzz' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
         run: |
           cd .runner-temp/scripts
-          python yoyo_auto_openai_register_V3.5-curl-qzz.py --once &
-          python yoyo_auto_openai_register_V3.5-curl-de5.py --once
+           python yoyo_auto_openai_register_v3.7-qzz.py --once &
+           python yoyo_auto_openai_register_v3.7-dpdns.py --once &
+          
       - name: Run dpdns script
         if: github.event.inputs.script == 'dpdns' || github.event.inputs.script == 'both' || github.event_name == 'schedule'
         run: |
           cd .runner-temp/scripts
-          python yoyo_auto_openai_register_V3.5-curl-dpdns.py --once &
-          python yoyo_auto_openai_register_V3.5-curl-indevs.py --once
+          python yoyo_auto_openai_register_v3.7-indevs.py --once &
+          python yoyo_auto_openai_register_v3.7-de5.py --once &
 
       # 6. 上傳 token artifact（從隔離目錄取值）
       - name: Upload tokens as artifact
