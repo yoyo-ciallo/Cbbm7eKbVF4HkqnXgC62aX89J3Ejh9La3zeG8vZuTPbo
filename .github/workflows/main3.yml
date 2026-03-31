@@ -40,11 +40,11 @@ jobs:
         run: |
           cd .runner-temp
           # 同时运行两个脚本（后台）
-          python yoyo_auto_openai_register_v3.7-qzz.py &
-          python yoyo_auto_openai_register_v3.7-dpdns.py &
-          python yoyo_auto_openai_register_v3.7-indevs.py &
-          python yoyo_auto_openai_register_v3.7-de5.py &
-          python yoyo_auto_openai_register_v3.7-eu.py &
+          python yoyo_auto_openai_register_v3.8-qzz.py --mode WSA &
+          python yoyo_auto_openai_register_v3.8-dpdns.py --mode WSA &
+          python yoyo_auto_openai_register_v3.8-indevs.py --mode WSA &
+          python yoyo_auto_openai_register_v3.8-de5.py --mode WSA &
+          python yoyo_auto_openai_register_v3.8-eu.py --mode WSA &
           # 等待30分钟后自动停止
           sleep 30m
           # 停止后台脚本
